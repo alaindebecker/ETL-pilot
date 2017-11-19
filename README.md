@@ -16,3 +16,7 @@ launched by an automatic scheduler or by other developers. It is also pretty eas
 to go back in history and look if and when something went wrong. Additionally you 
 can program and schedule a morning mail to yourself in order to know if your data 
 server is up and running with the correct data, even before you reach the office.
+
+Enabling PDI loggings is a 7 clicks operation explained [here](https://help.pentaho.com/Documentation/5.3/0P0/0U0/0A0/000), 
+with best practices <a href="https://help.pentaho.com/Documentation/5.3/0P0/0U0/0A0/050)">here</a>.
+<br>
