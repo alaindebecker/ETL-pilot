@@ -72,7 +72,7 @@ ktr to restart it, hence the need of the full path.
 - PDI-16550 to record the parameters of the transformation at the time of the 
 run so that you can restart it in the same conditions. As sometimes the 
 parameter values are given by an orchestrating job, so to guess them on the next 
-day is no always an easy task.
+day is not always an easy task.
 
 # Conclusion
 In conclusion, setup your PDI logging, install the ETL-pilot on your server, 
