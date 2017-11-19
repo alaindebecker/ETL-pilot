@@ -18,5 +18,5 @@ can program and schedule a morning mail to yourself in order to know if your dat
 server is up and running with the correct data, even before you reach the office.
 
 Enabling PDI loggings is a 7 clicks operation explained [here](https://help.pentaho.com/Documentation/5.3/0P0/0U0/0A0/000), 
-with best practices <a href="https://help.pentaho.com/Documentation/5.3/0P0/0U0/0A0/050)">here</a>.
-<br>
+with best practices [here](https://help.pentaho.com/Documentation/5.3/0P0/0U0/0A0/050).
+
