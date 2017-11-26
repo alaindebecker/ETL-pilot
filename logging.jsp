@@ -11,7 +11,7 @@
 	<style>
 		* { font-family: Sans-serif; cursor: default; }
 		html, body { margin: 0 }
-		#content { width: 80%; margin: 0 auto ;  box-shadow: 10px 0px 1.5em grey, -10px 0px 15px grey; padding: 0 1em; }0
+		#content { width: 80%; margin: 0 auto ;  box-shadow: 10px 0px 1.5em grey, -10px 0px 15px grey; padding: 0 1em 2em; }
 
 		h2 { color: blue; }
 		h1 { margin-top: 0; padding-top: .5em; }
@@ -76,37 +76,37 @@
 		while(rs.next())
 			if(!rs.getString(1).equals(key)){
 				
-				int p = rs.getString(1).lastIndexOf("/");
-				if(!rs.getString(1).substring(0,p).equals(dir))
-                    out.println("<tr><th class='"+rs.getMetaData().getColumnLabel(1)+"'>"+rs.getString(1).substring(0,p)+"</th></tr>");
-                dir = rs.getString(1).substring(0,p);
-				
-				out.print("<tr>");
-				for(int i=1; i<=columnCount; i++){
-					out.print("<td class='"+rs.getMetaData().getColumnLabel(i));
+	                int p = rs.getString(1).lastIndexOf("/");
+	                if(p>=0 && !rs.getString(1).substring(0,p).equals(dir)) {
+			    out.println("<tr><th class='"+rs.getMetaData().getColumnLabel(1)+"'>"+rs.getString(1).substring(0,p)+"</th></tr>");
+                            dir = rs.getString(1).substring(0,p);
+			}
+			
+			out.print("<tr>");
+			for(int i=1; i<=columnCount; i++){
+			    out.print("<td class='"+rs.getMetaData().getColumnLabel(i));
 
-					//if(i==2 && !lastNight(rs.getString(2)))
-                    //    out.print( " warning");
-					if(i==3 && !rs.getString(3).equals("end"))
-						out.print( " warning");
-                    if(i==5 && rs.getInt(5)==0)
-						out.print( " warning");
-                    if(i==6 && rs.getInt(6)>0)
-						out.print( " warning");
+			    //if(i==2 && !lastNight(rs.getString(2)))
+                            //    out.print( " warning");
+			    if(i==3 && !rs.getString(3).equals("end"))
+			       out.print( " warning");
+                            if(i==5 && rs.getInt(5)==0)
+			       out.print( " warning");
+                            if(i==6 && rs.getInt(6)>0)
+			       out.print( " warning");
 
-					if(i==1)
-						out.print("' onclick='refresh(\""+rs.getString(1)+"\")");
-					if(i==2)
-						out.print("' onclick='refresh(\""+rs.getString(1)+"\", \""+rs.getString(2)+"\")");
+			    if(i==1)
+			        out.print("' onclick='refresh(\""+rs.getString(1)+"\")");
+			    if(i==2)
+			        out.print("' onclick='refresh(\""+rs.getString(1)+"\", \""+rs.getString(2)+"\")");
 
-					
-					if(i==1)
-						out.println("'>"+rs.getString(i).substring(p+1)+"</td>");
-					else
-						out.println("'>"+rs.getString(i)+"</td>");						
-				}
-				out.println("</tr>");
-				key = rs.getString(1);
+                            if(i==1)
+                                out.println("'>"+rs.getString(i).substring(p+1)+"</td>");
+			    else
+				out.println("'>"+rs.getString(i)+"</td>");						
+                        }
+                        out.println("</tr>");
+                        key = rs.getString(1);
 		}
 		rs.close();
 	%></table>
