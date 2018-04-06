@@ -30,6 +30,7 @@
 		
 		[onclick]:hover { color: #0000EE; text-decoration: underline; }
 		.warning { color: red; font-weight: bold; }
+		<% //TODO: include something sweet like bootstrap %>
 	</style>
 	
 	
@@ -45,13 +46,27 @@
 			conf.getProperty("username"),
 			conf.getProperty("password")
 		).createStatement();
-		String source = conf.getProperty("source");
-		String detail = conf.getProperty("detail");
+		
+		/* GET properties as in kettle.properties to check table names */
+		/* TODO: read the kettle.properties 
+		   TODO: support schema inside the queries
+		*/
+		
+		String KETTLE_CHANNEL_LOG_SCHEMA = conf.getProperty("KETTLE_CHANNEL_LOG_SCHEMA");
+		String KETTLE_CHANNEL_LOG_TABLE = conf.getProperty("KETTLE_CHANNEL_LOG_TABLE");
+		String KETTLE_JOBENTRY_LOG_SCHEMA = conf.getProperty("KETTLE_JOBENTRY_LOG_SCHEMA");
+		String KETTLE_JOBENTRY_LOG_TABLE = conf.getProperty("KETTLE_JOBENTRY_LOG_TABLE");
+		String KETTLE_JOB_LOG_SCHEMA = conf.getProperty("KETTLE_JOB_LOG_SCHEMA");
+		String KETTLE_JOB_LOG_TABLE = conf.getProperty("KETTLE_JOB_LOG_TABLE");
+		String KETTLE_TRANS_LOG_SCHEMA = conf.getProperty("KETTLE_TRANS_LOG_SCHEMA");
+		String KETTLE_TRANS_LOG_TABLE = conf.getProperty("KETTLE_TRANS_LOG_TABLE");
+		String KETTLE_STEP_LOG_SCHEMA = conf.getProperty("KETTLE_STEP_LOG_SCHEMA");
+		String KETTLE_STEP_LOG_TABLE = conf.getProperty("KETTLE_STEP_LOG_TABLE");
+		
 		String name  = request.getParameter("name"); 
 		String date   = request.getParameter("date");
 		String type   = request.getParameter("type");
 		String channel_id   = request.getParameter("channel_id");
-		String logText = conf.getProperty("logText");
 		
 		int limit = 12;
 		if(request.getParameter("limit")!=null)
@@ -62,9 +77,30 @@
 
 
 
-<body><div id="content">
+<body>
+<div id="content">
+
 	<h1>ETL-Pilot<div id='now'>Date</div></h1>
+	
 	<table><% 
+		//TODO: check tables prior executing queries to avoid ugly messages
+		//TODO: handle errors
+	    String source = 
+    			"SELECT DISTINCT 'trans' as type, t.transname as name, t.replaydate as Date, status, (t.logdate - t.replaydate) as duration, lines_output+lines_updated as Output, Errors, t.channel_id from "+KETTLE_TRANS_LOG_TABLE+" t "
+	    			+ "INNER JOIN "+KETTLE_CHANNEL_LOG_TABLE+" c on c.channel_id = t.channel_id "
+	    			+ "INNER JOIN "
+	    				+ "( select max(replaydate) as replaydate, transname from "+KETTLE_TRANS_LOG_TABLE+" group by transname ) _max "
+	    				+ "ON _max.replaydate = t.replaydate and _max.transname = t.transname "
+	    			+ "WHERE c.root_channel_id = c.channel_id ";
+	    if(KETTLE_JOB_LOG_TABLE!=null && !KETTLE_JOB_LOG_TABLE.trim().equals(""))	
+    		source +="UNION "
+	    			+"SELECT 'job' as type, j.jobname as name, j.replaydate as Date, status, (j.logdate - j.replaydate) as duration, lines_output+lines_updated as Output, Errors, j.channel_id FROM "+KETTLE_JOB_LOG_TABLE+" j "
+		    		+ "INNER JOIN "+KETTLE_CHANNEL_LOG_TABLE+" c on c.channel_id = j.channel_id "
+		    		+ "INNER JOIN "
+		    			+ "( select max(replaydate) as replaydate, jobname from "+KETTLE_JOB_LOG_TABLE+" group by jobname ) _max "
+		    			+ "ON _max.replaydate = j.replaydate and _max.jobname = j.jobname "
+		    		+ "WHERE c.root_channel_id = c.channel_id ";
+	    source += "ORDER BY type, Date desc ";
 		ResultSet rs = db.executeQuery(source);
 		int columnCount = rs.getMetaData().getColumnCount();
 
@@ -131,6 +167,15 @@
 	<h2><%= type+":"+name %></h2>
 	<table><%
 		//String sql = "SELECT * FROM ("+source+") a WHERE Transformation='"+trans+"' LIMIT "+limit;
+		String detail = "SELECT DISTINCT 'trans' as type, t.transname as name, t.replaydate as Date, status, (t.logdate - t.replaydate) as duration, lines_output+lines_updated as Output, Errors, t.channel_id from log_etl_trans t "
+				+"LEFT JOIN log_etl_channel c on c.channel_id = t.channel_id "
+				+"WHERE c.root_channel_id = c.channel_id ";
+		if(KETTLE_JOB_LOG_TABLE!=null && !KETTLE_JOB_LOG_TABLE.trim().equals(""))	
+			detail += "UNION "
+				   + "SELECT 'job' as type, j.jobname as name, j.replaydate as Date, status, (j.logdate - j.replaydate) as duration, lines_output+lines_updated as Output, Errors, j.channel_id FROM log_etl_job j "
+				   + "LEFT JOIN log_etl_channel c on c.channel_id = j.channel_id "
+				   +"WHERE c.root_channel_id = c.channel_id ";
+		detail += "ORDER BY Date desc"; 
 		String sql = "SELECT * FROM ("+detail+") a WHERE name='"+name+"' AND type='"+type+"' ORDER BY Date DESC LIMIT "+limit;
 		rs = db.executeQuery(sql);
 		columnCount = rs.getMetaData().getColumnCount();
@@ -161,18 +206,30 @@
 	<% if(name!=null && type.equals("job") && channel_id!=null){ // Job Detail %> 
 	<table><%
 		/*String sql = "select c.object_name as name, c.log_date, c.logging_object_type, (t.logdate - t.replaydate) as duration, c.channel_id, c.id_batch  "+
-				"from  log_etl_channel c " +
-				"LEFT JOIN log_etl_trans t on c.channel_id = t.channel_id " +
+				"from  "+KETTLE_CHANNEL_LOG_TABLE+" c " +
+				"LEFT JOIN "+KETTLE_TRANS_LOG_TABLE+" t on c.channel_id = t.channel_id " +
 				"where root_channel_id='"+channel_id+"' and logging_object_type IN ('JOB', 'TRANS') order by replaydate,logdate asc";*/
-		String sql = 	"select c.object_name as name "+
+		String sql;
+		if(KETTLE_JOB_LOG_TABLE!=null && !KETTLE_JOB_LOG_TABLE.trim().equals(""))
+		{
+			sql = 	"select c.object_name as name "+
 				"  , CASE WHEN t.logdate IS NULL THEN j.logdate ELSE t.logdate END as logdate, c.log_date, c.logging_object_type "+
 				"  , CASE WHEN t.replaydate IS NULL THEN j.replaydate ELSE t.replaydate END as replaydate "+
-				"  , CASE WHEN t.logdate IS NULL THEN (j.logdate - j.replaydate) ELSE (t.logdate - t.replaydate) END as duration, c.channel_id, c.id_batch from log_etl_channel c "+
-				"LEFT JOIN log_etl_trans t on c.channel_id = t.channel_id  "+
-				"LEFT JOIN log_etl_job j on c.channel_id = j.channel_id  "+
+				"  , CASE WHEN t.logdate IS NULL THEN (j.logdate - j.replaydate) ELSE (t.logdate - t.replaydate) END as duration, c.channel_id, c.id_batch from "+KETTLE_CHANNEL_LOG_TABLE+" c "+
+				"LEFT JOIN "+KETTLE_TRANS_LOG_TABLE+" t on c.channel_id = t.channel_id  "+
+				"LEFT JOIN "+KETTLE_JOB_LOG_TABLE+" j on c.channel_id = j.channel_id  "+
 				"where root_channel_id='"+channel_id+"' and logging_object_type IN ('JOB', 'TRANS')  "+
 				"order by replaydate, logdate ";
-		
+		}else
+		{
+			sql = 	"select c.object_name as name "+
+					"  , t.logdate as logdate, c.log_date, c.logging_object_type "+
+					"  , t.replaydate  as replaydate "+
+					"  , (t.logdate - t.replaydate) as duration, c.channel_id, c.id_batch from "+KETTLE_CHANNEL_LOG_TABLE+" c "+
+					"LEFT JOIN "+KETTLE_TRANS_LOG_TABLE+" t on c.channel_id = t.channel_id  "+
+					"where root_channel_id='"+channel_id+"' and logging_object_type IN ('TRANS')  "+
+					"order by replaydate, logdate ";
+		}
 		rs = db.executeQuery(sql);
 		columnCount = rs.getMetaData().getColumnCount();
 
@@ -189,7 +246,7 @@
 				out.print("'>"+rs.getString(i)+"</td>");						
 			}
 			out.println("</tr>");
-			String trans_detail = "select c.logging_object_type, st.* from log_etl_trans_step st INNER JOIN log_etl_channel c on c.channel_id = st.channel_id "+
+			String trans_detail = "select c.logging_object_type, st.* from "+KETTLE_TRANS_LOG_TABLE+"_step st INNER JOIN "+KETTLE_CHANNEL_LOG_TABLE+" c on c.channel_id = st.channel_id "+
 				"WHERE c.parent_channel_id = '"+rs.getString("channel_id")+"' and st.id_batch = '"+rs.getString("id_batch")+"'";
 			
 			/*ResultSet rs2 = db.executeQuery(trans_detail);
@@ -202,7 +259,7 @@
 
 					out.print("'>"+rs.getString(i)+"</td>");						
 				}
-				out.println("</tr>");
+				ou t.println("</tr>");
 			}
 			rs2.close();*/
 		}
@@ -217,14 +274,13 @@
 	<h2>Run of <%= name %> of <%= date %></h2>
 
 	<%
-		PreparedStatement stmt = db.getConnection().prepareStatement(logText);
-		stmt.setString(1, name);
-		stmt.setString(2, date);
-		stmt.setString(3, type);
-		stmt.setString(4, name);
-		stmt.setString(5, date);
-		stmt.setString(6, type);
-		rs = stmt.executeQuery();
+	String logText = "SELECT log_field FROM "+KETTLE_TRANS_LOG_TABLE+" WHERE transname='"+name+"' AND replaydate='"+date+"' AND 'trans'='"+type+"'"; 
+    if(KETTLE_JOB_LOG_TABLE!=null && !KETTLE_JOB_LOG_TABLE.trim().equals(""))
+		{
+			logText += "UNION "
+				+"SELECT log_field FROM log_etl_job WHERE jobname='"+name+"' AND replaydate='"+date+"' AND 'job'='"+type+"'"; 
+		}
+    	rs = db.executeQuery(logText);
 		if(rs.next())
 			out.println("<textarea>"+rs.getString(1)+"</textarea>");
 		rs.close();
@@ -236,8 +292,9 @@
 	
 	
 	
-	
+</div>	
 <script>
+	<% //TODO: Ajax the instead of reload. Use of jQuery ?  %>
 	refresh = (name, type, date, channel_id) => {
 		//console.log('refresh '+trans+' '+date);
 		var url = '<%= request.getRequestURL() %>?'; //mode=' + document.getElementById("mode").value;
