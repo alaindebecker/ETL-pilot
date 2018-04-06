@@ -46,8 +46,11 @@
 			conf.getProperty("password")
 		).createStatement();
 		String source = conf.getProperty("source");
-		String trans  = request.getParameter("trans"); 
+		String detail = conf.getProperty("detail");
+		String name  = request.getParameter("name"); 
 		String date   = request.getParameter("date");
+		String type   = request.getParameter("type");
+		String channel_id   = request.getParameter("channel_id");
 		String logText = conf.getProperty("logText");
 		
 		int limit = 12;
@@ -55,31 +58,32 @@
 			limit = Integer.parseInt(request.getParameter("limit"));
 		
 	%>
-</head>
+</head> 
 
 
 
 <body><div id="content">
 
 	<h1>Load Status Dashboard<div id='now'>Date</div></h1>
+	
 	<table><% 
 		ResultSet rs = db.executeQuery(source);
 		int columnCount = rs.getMetaData().getColumnCount();
 
 		out.print("<tr>");
-		for(int i=1; i<=columnCount; i++)
+		for(int i=1; i<=columnCount-1; i++)
 			out.print("<th class='"+rs.getMetaData().getColumnLabel(i)+"'>"+rs.getMetaData().getColumnLabel(i)+"</th>");
 		out.println("</tr>");
 		
 		String key = "";
 		String dir = "";
 		while(rs.next())
-			if(!rs.getString(1).equals(key)){
+			if(!rs.getString("name").equals(key)){
 				
-	                int p = rs.getString(1).lastIndexOf("/");
-	                if(p>=0 && !rs.getString(1).substring(0,p).equals(dir)) {
-			    out.println("<tr><th class='"+rs.getMetaData().getColumnLabel(1)+"'>"+rs.getString(1).substring(0,p)+"</th></tr>");
-                            dir = rs.getString(1).substring(0,p);
+	                int p = rs.getString("name").lastIndexOf("/");
+	                if(p>=0 && !rs.getString("name").substring(0,p).equals(dir)) {
+			    out.println("<tr><th class='"+rs.getMetaData().getColumnLabel(2)+"'>"+rs.getString("name").substring(0,p)+"</th></tr>");
+                            dir = rs.getString("name").substring(0,p);
 			}
 			
 			out.print("<tr>");
@@ -88,25 +92,32 @@
 
 			    //if(i==2 && !lastNight(rs.getString(2)))
                             //    out.print( " warning");
-			    if(i==3 && !rs.getString(3).equals("end"))
+			    if(i==4 && !rs.getString("status").equals("end"))
 			       out.print( " warning");
-                            if(i==5 && rs.getInt(5)==0)
+                            if(i==6 && rs.getInt("Output")==0)
 			       out.print( " warning");
-                            if(i==6 && rs.getInt(6)>0)
+                            if(i==7 && rs.getInt("Errors")>0)
 			       out.print( " warning");
 
-			    if(i==1)
-			        out.print("' onclick='refresh(\""+rs.getString(1)+"\")");
 			    if(i==2)
-			        out.print("' onclick='refresh(\""+rs.getString(1)+"\", \""+rs.getString(2)+"\")");
-
-                            if(i==1)
-                                out.println("'>"+rs.getString(i).substring(p+1)+"</td>");
+			        out.print("' onclick='refresh(\""+rs.getString("name")+"\", \""+rs.getString("type")+"\")");
+			    if(i==3)
+			        out.print("' onclick='refresh(\""+rs.getString("name")+"\", \""+rs.getString("type")+"\", \""+rs.getString("Date")+"\", \""+rs.getString("channel_id")+"\")");
+			    if(i==1)
+			    {
+                    out.println("'>"+rs.getString(i).substring(p+1)+"</td>");
+			    }
+			    else if(rs.getMetaData().getColumnLabel(i).equals("channel_id"))
+			    {
+			    	out.println("'></td>");
+			    }
 			    else
-				out.println("'>"+rs.getString(i)+"</td>");						
-                        }
-                        out.println("</tr>");
-                        key = rs.getString(1);
+			    {
+					out.println("'>"+rs.getString(i)+"</td>");						
+                }
+			}
+            out.println("</tr>"); 
+            key = rs.getString(1);
 		}
 		rs.close();
 	%></table>
@@ -114,15 +125,15 @@
 	
 	
 
-	<% if(trans!=null){ // History %> 
+	<% if(name!=null){ // History %> 
 	<br /><hr />
 		<span style="float: right;">
-			Limit: <input id="limit" type="Number" onchange="refresh('<%= trans%>')" value="<%= limit%>">
+			Limit: <input id="limit" type="Number" onchange="refresh('<%= name %>')" value="<%= limit%>">
 		</span>
-	<h2><%= trans %></h2>
+	<h2><%= type+":"+name %></h2>
 	<table><%
 		//String sql = "SELECT * FROM ("+source+") a WHERE Transformation='"+trans+"' LIMIT "+limit;
-		String sql = "SELECT * FROM ("+source+") a WHERE Transformation='"+trans+"' ORDER BY 2 DESC LIMIT "+limit;
+		String sql = "SELECT * FROM ("+detail+") a WHERE name='"+name+"' AND type='"+type+"' ORDER BY Date DESC LIMIT "+limit;
 		rs = db.executeQuery(sql);
 		columnCount = rs.getMetaData().getColumnCount();
 
@@ -132,17 +143,70 @@
 		out.println("</tr>");
 		
 		while(rs.next())
-			if(rs.getString(1).equals(trans)){
+		{
+			if(rs.getString("name").trim().equals(name)){
 				
 				out.print("<tr>");
-				for(int i=2; i<=columnCount; i++){
+				for(int i=2; i<=columnCount-1; i++){
 					out.print("<td class='"+rs.getMetaData().getColumnLabel(i));
 					if(i==2)
-						out.print("' onclick='refresh(\""+rs.getString(1)+"\", \""+rs.getString(2)+"\")");
+						out.print("' onclick='refresh(\""+rs.getString("name")+"\", \""+rs.getString("type")+"\", \""+rs.getString("Date")+"\", \""+rs.getString("channel_id")+"\")");
 
 					out.print("'>"+rs.getString(i)+"</td>");						
 				}
 				out.println("</tr>");
+			}
+		}
+		rs.close();	
+	%></table><%}%>
+	
+	<% if(name!=null && type.equals("job") && channel_id!=null){ // Job Detail %> 
+	<table><%
+		/*String sql = "select c.object_name as name, c.log_date, c.logging_object_type, (t.logdate - t.replaydate) as duration, c.channel_id, c.id_batch  "+
+				"from  log_etl_channel c " +
+				"LEFT JOIN log_etl_trans t on c.channel_id = t.channel_id " +
+				"where root_channel_id='"+channel_id+"' and logging_object_type IN ('JOB', 'TRANS') order by replaydate,logdate asc";*/
+		String sql = 	"select c.object_name as name "+
+				"  , CASE WHEN t.logdate IS NULL THEN j.logdate ELSE t.logdate END as logdate, c.log_date, c.logging_object_type "+
+				"  , CASE WHEN t.replaydate IS NULL THEN j.replaydate ELSE t.replaydate END as replaydate "+
+				"  , CASE WHEN t.logdate IS NULL THEN (j.logdate - j.replaydate) ELSE (t.logdate - t.replaydate) END as duration, c.channel_id, c.id_batch from log_etl_channel c "+
+				"LEFT JOIN log_etl_trans t on c.channel_id = t.channel_id  "+
+				"LEFT JOIN log_etl_job j on c.channel_id = j.channel_id  "+
+				"where root_channel_id='"+channel_id+"' and logging_object_type IN ('JOB', 'TRANS')  "+
+				"order by replaydate, logdate ";
+		
+		rs = db.executeQuery(sql);
+		columnCount = rs.getMetaData().getColumnCount();
+
+		out.print("<tr>");
+		for(int i=1; i<=columnCount; i++)
+			out.print("<th class='"+rs.getMetaData().getColumnLabel(i)+"'>"+rs.getMetaData().getColumnLabel(i)+"</th>");
+		out.println("</tr>");
+		
+		while(rs.next())
+		{
+			out.print("<tr>");
+			for(int i=1; i<=columnCount; i++){
+				out.print("<td class='"+rs.getMetaData().getColumnLabel(i));
+				out.print("'>"+rs.getString(i)+"</td>");						
+			}
+			out.println("</tr>");
+			String trans_detail = "select c.logging_object_type, st.* from log_etl_trans_step st INNER JOIN log_etl_channel c on c.channel_id = st.channel_id "+
+				"WHERE c.parent_channel_id = '"+rs.getString("channel_id")+"' and st.id_batch = '"+rs.getString("id_batch")+"'";
+			
+			/*ResultSet rs2 = db.executeQuery(trans_detail);
+			while (rs2.next()){
+				out.print("<tr>");
+				for(int i=1; i<=rs.getMetaData().getColumnCount(); i++){
+					out.print("<td class='"+rs.getMetaData().getColumnLabel(i));
+					//if(i==2)
+					//	out.print("' onclick='refresh(\""+rs.getString("name")+"\", \""+rs.getString("type")+"\", \""+rs.getString("Date")+"\")");
+
+					out.print("'>"+rs.getString(i)+"</td>");						
+				}
+				out.println("</tr>");
+			}
+			rs2.close();*/
 		}
 		rs.close();	
 	%></table><%}%>
@@ -150,14 +214,18 @@
 	
 	
 
-	<% if(trans!=null && date!=null){ // Log %> 
+	<% if(name!=null && date!=null){ // Log %> 
 	<br /><hr />
-	<h2>Run of <%= trans %> of <%= date %></h2>
+	<h2>Run of <%= name %> of <%= date %></h2>
 
 	<%
 		PreparedStatement stmt = db.getConnection().prepareStatement(logText);
-		stmt.setString(1, trans);
+		stmt.setString(1, name);
 		stmt.setString(2, date);
+		stmt.setString(3, type);
+		stmt.setString(4, name);
+		stmt.setString(5, date);
+		stmt.setString(6, type);
 		rs = stmt.executeQuery();
 		if(rs.next())
 			out.println("<textarea>"+rs.getString(1)+"</textarea>");
@@ -172,13 +240,17 @@
 	
 	
 <script>
-	refresh = (trans, date) => {
+	refresh = (name, type, date, channel_id) => {
 		//console.log('refresh '+trans+' '+date);
 		var url = '<%= request.getRequestURL() %>?'; //mode=' + document.getElementById("mode").value;
-        if(trans)
-            url += '&trans='+trans;
+        if(name)
+            url += '&name='+name;
+		if(type)
+            url += '&type='+type;
 		if(date)
             url += '&date='+date;
+		if(channel_id)
+            url += '&channel_id='+channel_id;
 		if(document.getElementById('limit'))
 			url += '&limit='+document.getElementById('limit').value;
 		window.location = url;
