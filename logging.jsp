@@ -61,7 +61,7 @@
 
 <body><div id="content">
 
-	<h1>Load Status Dashboard<div id='now'>Date</div></h1>
+	<h1>ETL-Pilot<div id='now'>Date</div></h1>
 	<table><% 
 		ResultSet rs = db.executeQuery(source);
 		int columnCount = rs.getMetaData().getColumnCount();
